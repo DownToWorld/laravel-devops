@@ -31,6 +31,7 @@ php artisan vendor:publish --tag=laravel-devops
 - Go to Cloudflare Zero Trust Settings -> WARP Client -> Configure "Default" Device Settings:
     - Add a Local Domain Fallback: `domain`: cloudflared `DNS Servers`: *your-assigned-ip*
     - Set Split Tunnels to `Include IPs and domains` and add `Selector`: IP Address `Value`: *your-network-ip-range*
+- Give your email access at Cloudflare Zero Trust Settings -> WARP Client -> Device enrollment permissions.
 - Install [Cloudflare WARP](https://1.1.1.1/) on your computer, connect it to your Zero Trust org and enable it.
 - Now you can access all your cloudflared-network-connected docker containers locally as `mystack-service-1.cloudflared:port`
 
