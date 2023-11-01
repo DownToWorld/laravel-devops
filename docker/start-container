@@ -5,7 +5,7 @@ if [ ! -d /.composer ]; then
     chmod -R ugo+rw /.composer
 fi
 
-rsync --exclude=node_modules --exclude=.git --exclude=.github --exclude=node_modules --exclude=vendor --exclude=storage/app --exclude=storage/logs --delete --no-perms --no-owner --no-group --recursive /var/www/html2/ /var/www/html/
+rsync --exclude=node_modules --exclude=.git --exclude=.github --exclude=node_modules --exclude=vendor --exclude=storage/app/* --exclude=storage/logs --delete --no-perms --no-owner --no-group --recursive /var/www/html2/ /var/www/html/
 
 chown -R laravel:1000 /var/www/html/
 
