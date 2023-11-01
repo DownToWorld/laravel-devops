@@ -1,0 +1,38 @@
+{
+  "name": "downtoworld/laravel-devops",
+  "description": "Laravel Cloudflare-Tunnels Ready Production Docker-Compose",
+  "keywords": ["laravel", "docker compose", "docker", "devops", "cloudflare tunnels", "portainer", "ci cd", "production"],
+  "license": "MIT",
+
+  "authors": [
+    {
+      "name": "Sergio Ródenas",
+      "homepage": "https://sergiorodenas.com",
+      "role": "developer"
+    }
+  ],
+
+  "require": {
+    "php": ">=7.4",
+    "hedii/laravel-gelf-logger": "^8.1",
+    "laravel/framework": ">8"
+  },
+
+  "autoload": {
+    "psr-4": {
+      "DownToWorld\\LaravelDevops\\": "src"
+    }
+  },
+
+  "config": {
+    "sort-packages": true
+  },
+
+  "extra": {
+    "laravel": {
+        "providers": [
+            "DownToWorld\\LaravelDevops\\ServiceProvider"
+        ]
+    }
+  }
+}

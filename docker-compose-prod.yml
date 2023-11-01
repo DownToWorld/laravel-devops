@@ -1,0 +1,177 @@
+version: '3'
+
+services:
+    app:
+        ## For cache purposes
+        image: '${APP_DOCKER_STACK}-laravel-prod/app:php${APP_PHP_VERSION:-8.2}'
+
+        ## We don't want to pull actually
+        pull_policy: build
+
+        build:
+            context: .
+            dockerfile: './docker/${APP_PHP_VERSION:-8.2}-prod/Dockerfile'
+        environment:
+            XDEBUG_MODE: 'off'
+        env_file: 
+            - docker-compose-prod.env
+        volumes:
+            - 'app:/var/www/html'
+        depends_on:
+            mysql:
+                condition: service_healthy
+        networks:
+            - laravel
+
+    nginx:
+        ## For cache purposes
+        image: '${APP_DOCKER_STACK}-shinsenter/phpfpm-nginx:php${APP_PHP_VERSION:-8.2}'
+
+        ## We don't want to pull actually
+        pull_policy: build
+
+        build:
+            context: .
+            dockerfile_inline: |
+                FROM shinsenter/phpfpm-nginx:php${APP_PHP_VERSION:-8.2}
+
+                # you may want to install some PHP modules
+                # e.g: the following line will install imagick, pgsql, solr modules
+                # RUN phpaddmod imagick pgsql solr
+
+                # https://github.com/shinsenter/php#customize-docker-image
+        environment:
+            NGINX_DOCUMENT_ROOT: '/public'
+            TZ: UTC
+            PGID: 1000
+            PUID: 1000
+            FIX_WEBHOME_PERMISSION: true
+        env_file: 
+            - docker-compose-prod.env
+        volumes:
+            - 'app:/var/www/html'
+        networks:
+            - laravel
+            - cloudflared #80
+
+    mysql:
+        image: 'mariadb:10'
+        environment:
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD:-secret}'
+            MYSQL_ROOT_HOST: "%"
+            MYSQL_DATABASE: '${DB_DATABASE:-laravel}'
+            MYSQL_USER: '${DB_USERNAME:-laravel}'
+            MYSQL_PASSWORD: '${DB_PASSWORD:-secret}'
+            MYSQL_ALLOW_EMPTY_PASSWORD: 1
+        volumes:
+            - 'mysql:/var/lib/mysql'
+        networks:
+            - laravel
+            - cloudflared #3306 TCP !!Use Cloudflare Zero Trust Access Applications for security!!
+        healthcheck:
+            test: ["CMD", "mysqladmin", "ping", "-p${DB_PASSWORD}"]
+            retries: 3
+            timeout: 5s
+
+    redis:
+        image: 'redis:alpine'
+        volumes:
+            - 'redis:/data'
+        networks:
+            - laravel
+            - cloudflared
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            retries: 3
+            timeout: 5s
+
+    minio:
+        image: 'minio/minio:latest'
+        environment:
+            MINIO_ROOT_USER: 'laravel'
+            MINIO_ROOT_PASSWORD: 'password'
+        volumes:
+            - 'minio:/data/minio'
+        networks:
+            - laravel
+            - cloudflared #9000 && #8900 !!Use Cloudflare Zero Trust Access Applications for security!!
+        command: minio server /data/minio --console-address ":8900"
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+            retries: 3
+            timeout: 5s
+
+    selenium:
+        image: 'selenium/standalone-chrome'
+        extra_hosts:
+            - 'host.docker.internal:host-gateway'
+        volumes:
+            - '/dev/shm:/dev/shm'
+        networks:
+            - laravel
+
+    mailpit:
+        image: 'axllent/mailpit:latest'
+        networks:
+            - laravel
+            - cloudflared #8025
+
+    soketi:
+        image: 'quay.io/soketi/soketi:latest-16-alpine'
+        environment:
+            SOKETI_DEBUG: '${SOKETI_DEBUG:-1}'
+            SOKETI_METRICS_SERVER_PORT: '9601'
+        env_file:
+            - docker-compose-prod.env
+        networks:
+            - laravel
+            - cloudflared #6001 websocket-option && #9601 !!Use Cloudflare Zero Trust Access Applications for security!!
+
+    meilisearch:
+        image: 'getmeili/meilisearch:latest'
+        environment:
+            MEILI_NO_ANALYTICS: '${MEILISEARCH_NO_ANALYTICS:-false}'
+        volumes:
+            - 'meilisearch:/meili_data'
+        networks:
+            - laravel
+            - cloudflared #7700 !!Use Cloudflare Zero Trust Access Applications for security!!
+        healthcheck:
+            test: ["CMD", "wget", "--no-verbose", "--spider",  "http://localhost:7700/health"]
+            retries: 3
+            timeout: 5s
+
+    # [...] https://github.com/laravel/sail/tree/1.x/stubs
+
+    seq-input-gelf:
+        image: datalust/seq-input-gelf:latest
+        depends_on:
+            - seq
+        environment:
+            SEQ_ADDRESS: "http://${APP_DOCKER_STACK:-mystack}-seq-1"
+        restart: unless-stopped
+        networks:
+            - laravel #12201
+    seq:
+        image: datalust/seq:latest
+        environment:
+            ACCEPT_EULA: Y
+        restart: unless-stopped
+        volumes:
+            - seq-data:/data
+        networks:
+            - laravel
+            - cloudflared #80 !!Use Cloudflare Zero Trust Access Applications for security!!
+
+networks:
+    laravel:
+    cloudflared:
+        external: true
+
+volumes:
+    app:
+    mysql:
+    redis:
+    minio:
+    meilisearch:
+    seq-data:

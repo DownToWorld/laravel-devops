@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+if [ ! -d /.composer ]; then
+    mkdir /.composer
+    chmod -R ugo+rw /.composer
+fi
+
+rsync --exclude=node_modules --exclude=.git --exclude=.github --exclude=node_modules --exclude=vendor --exclude=storage/app --exclude=storage/logs --delete --no-perms --no-owner --no-group --recursive /var/www/html2/ /var/www/html/
+
+chown -R laravel:1000 /var/www/html/
+
+gosu laravel composer install -d /var/www/html --no-interaction --prefer-dist --optimize-autoloader
+
+if [ ! -f /var/www/html/.env ]; then
+    gosu laravel touch /var/www/html/.env
+    gosu laravel echo "APP_KEY=" > /var/www/html/.env
+    gosu laravel php /var/www/html/artisan key:generate
+fi
+
+gosu laravel php /var/www/html/artisan migrate --force
+gosu laravel php /var/www/html/artisan horizon:terminate
+gosu laravel php /var/www/html/artisan horizon:publish
+gosu laravel php /var/www/html/artisan storage:link
+
+if [ ! -f /var/www/html/yarn.lock ]; then
+    gosu laravel yarn --cwd /var/www/html
+    gosu laravel yarn --cwd /var/www/html build
+fi
+
+find /var/www/html/ -type f -exec chmod 644 {} \;
+find /var/www/html/ -type d -exec chmod 755 {} \;
+
+if [ $# -gt 0 ]; then
+    exec gosu laravel "$@"
+else
+    exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+fi
