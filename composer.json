@@ -14,8 +14,8 @@
 
   "require": {
     "php": ">=7.4",
-    "hedii/laravel-gelf-logger": "^8.0|^9.0|^10.0",
-    "laravel/framework": ">8"
+    "hedii/laravel-gelf-logger": "^8.1",
+    "laravel/framework": "^8.0|^9.0|^10.0"
   },
 
   "autoload": {
