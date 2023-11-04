@@ -45,7 +45,6 @@ services:
             TZ: UTC
             PGID: 1000
             PUID: 1000
-            FIX_WEBHOME_PERMISSION: true
         env_file: 
             - docker-compose-prod.env
         volumes:
@@ -88,8 +87,8 @@ services:
     minio:
         image: 'minio/minio:latest'
         environment:
-            MINIO_ROOT_USER: 'laravel'
-            MINIO_ROOT_PASSWORD: 'password'
+            MINIO_ROOT_USER: '${MINIO_ROOT_USER:-laravel}'
+            MINIO_ROOT_PASSWORD: '${MINIO_ROOT_PASSWORD:-secret}'
         volumes:
             - 'minio:/data/minio'
         networks:
@@ -119,7 +118,8 @@ services:
     soketi:
         image: 'quay.io/soketi/soketi:latest-16-alpine'
         environment:
-            SOKETI_DEBUG: '${SOKETI_DEBUG:-1}'
+            SOKETI_DEBUG: '${SOKETI_DEBUG:-0}'
+            SOKETI_METRICS_ENABLED: 1
             SOKETI_METRICS_SERVER_PORT: '9601'
         env_file:
             - docker-compose-prod.env
@@ -130,6 +130,7 @@ services:
     meilisearch:
         image: 'getmeili/meilisearch:latest'
         environment:
+            MEILI_MASTER_KEY: '${MEILISEARCH_MASTER_KEY:-masterKey}'
             MEILI_NO_ANALYTICS: '${MEILISEARCH_NO_ANALYTICS:-false}'
         volumes:
             - 'meilisearch:/meili_data'
