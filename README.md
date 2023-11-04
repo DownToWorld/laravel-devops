@@ -25,7 +25,7 @@ php artisan vendor:publish --tag=laravel-devops
     - **Websocket server (Soketi)**: *ws.yourdomain.com* HTTPS (tls-check-disabled and ws-enabled options) *mystack*-soketi-1:6001
 
 ### Accessing private services (MySQL, Redis, etc) locally
-- Run `docker run -d --name cloudflare-docker-dns --network cloudflared -e DNS_FORWARDER=127.0.0.11 cytopia/bind` and copy it's assigned IP (*your-assigned-ip*) from Portainer UI.
+- Run `docker run -d --name cloudflare-docker-dns --restart always --network cloudflared -e DNS_FORWARDER=127.0.0.11 cytopia/bind` and copy it's assigned IP (*your-assigned-ip*) from Portainer UI.
 - Go to Portainer networks and copy `cloudflared` assigned IPV4 IPAM Subnet (*your-network-ip-range*)
 - Go to Cloudflare -> Zero Trust -> Access -> Tunnels and configure a new `Private network` at your tunnel with `CIDR`: *your-network-ip-range*
 - Go to Cloudflare Zero Trust Settings -> WARP Client -> Configure "Default" Device Settings:

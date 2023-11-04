@@ -22,7 +22,7 @@ gosu laravel php /var/www/html/artisan horizon:terminate
 gosu laravel php /var/www/html/artisan horizon:publish
 gosu laravel php /var/www/html/artisan storage:link
 
-if [ ! -f /var/www/html/yarn.lock ]; then
+if [ -f /var/www/html/yarn.lock ]; then
     gosu laravel yarn --cwd /var/www/html
     gosu laravel yarn --cwd /var/www/html build
 fi
