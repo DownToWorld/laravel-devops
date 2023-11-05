@@ -43,12 +43,12 @@ services:
         environment:
             NGINX_DOCUMENT_ROOT: '/public'
             TZ: UTC
-            PGID: 1000
-            PUID: 1000
+            PUID: 9999
+            PGID: 9999
         env_file: 
             - docker-compose-prod.env
         volumes:
-            - 'app:/var/www/html'
+            - 'app:/var/www/html:ro' # Cache, Logs and Filesystem are external
         networks:
             - laravel
             - cloudflared #80
@@ -163,6 +163,37 @@ services:
         networks:
             - laravel
             - cloudflared #80 !!Use Cloudflare Zero Trust Access Applications for security!!
+
+    backup:
+        # Restore backup: https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html
+        image: offen/docker-volume-backup:v2
+        restart: always
+        environment:
+            NOTIFICATION_URLS: "${BACKUP_NOTIFICATION_URLS}" # Ex: telegram://token@telegram?chats=@channel-1 // ERROR BACKUP
+            BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-7}"
+            BACKUP_COMPRESSION: "gz"
+            BACKUP_FROM_SNAPSHOT: "true"
+            NOTIFICATION_LEVEL: "${BACKUP_NOTIFICATION_LEVEL:-error}" // error OR info
+
+            AWS_S3_PATH: "${BACKUP_AWS_S3_PATH}"
+            AWS_S3_BUCKET_NAME: "${BACKUP_AWS_S3_BUCKET_NAME}"
+            AWS_ACCESS_KEY_ID: "${BACKUP_AWS_ACCESS_KEY_ID}"
+            AWS_SECRET_ACCESS_KEY: "${BACKUP_AWS_SECRET_ACCESS_KEY}"
+            AWS_STORAGE_CLASS: "${BACKUP_AWS_STORAGE_CLASS}" // STANDARD OR GLACIER
+
+            WEBDAV_URL: "${BACKUP_WEBDAV_URL}"
+            WEBDAV_PATH: "${BACKUP_WEBDAV_PATH}"
+            WEBDAV_USERNAME: "${BACKUP_WEBDAV_USERNAME}"
+            WEBDAV_PASSWORD: "${BACKUP_WEBDAV_PASSWORD}"
+
+            SSH_HOST_NAME: "${BACKUP_SSH_HOST_NAME}"
+            SSH_PORT: "${BACKUP_SSH_PORT}"
+            SSH_REMOTE_PATH: "${BACKUP_SSH_REMOTE_PATH}"
+            SSH_USER: "${BACKUP_SSH_USER}"
+            SSH_PASSWORD: "${BACKUP_SSH_PASSWORD}"
+        volumes:
+            - 'mysql:/backup/mysql:ro'
+            - 'minio:/backup/minio:ro'
 
 networks:
     laravel:

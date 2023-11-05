@@ -149,9 +149,5 @@ class ServiceProvider extends BaseServiceProvider
             // logging should be ignored or not. Default is true.
             'ignore_error' => true,
         ]);
-
-        Config::set('logging.channels.stack.channels', array_merge([
-            'gelf'
-        ], Config::get('logging.channels.stack.channels') ?? []));
     }
 }

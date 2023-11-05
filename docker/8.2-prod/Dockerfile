@@ -43,6 +43,7 @@ RUN apt-get update \
 RUN setcap "cap_net_bind_service=+ep" /usr/bin/php8.2
 
 RUN useradd -m -u 1000 laravel
+RUN groupadd -g 9999 webserver 
 
 COPY docker/start-container /usr/local/bin/start-container
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf

@@ -7,7 +7,7 @@ fi
 
 rsync --exclude=node_modules --exclude=.git --exclude=.github --exclude=node_modules --exclude=vendor --exclude=storage/app/* --exclude=storage/logs --delete --no-perms --no-owner --no-group --recursive /var/www/html2/ /var/www/html/
 
-chown -R laravel:1000 /var/www/html/
+chown -R laravel:webserver /var/www/html/
 
 gosu laravel composer install -d /var/www/html --no-interaction --prefer-dist --optimize-autoloader
 
@@ -27,6 +27,7 @@ if [ -f /var/www/html/yarn.lock ]; then
     gosu laravel yarn --cwd /var/www/html build
 fi
 
+chown -R laravel:webserver /var/www/html/
 find /var/www/html/ -type f -exec chmod 644 {} \;
 find /var/www/html/ -type d -exec chmod 755 {} \;
 
