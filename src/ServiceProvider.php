@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use Illuminate\Console\Scheduling\Schedule;
 
 class ServiceProvider extends BaseServiceProvider
 {
@@ -35,6 +36,11 @@ class ServiceProvider extends BaseServiceProvider
         Config::set('logging.channels.gelf.system_name', Cache::rememberForever('hostname_ip', function () {
             return Str::betweenFirst(Http::get('https://cloudflare.com/cdn-cgi/trace')->body(), 'ip=', "\n");
         }));
+
+        $this->app->booted(function () {
+            $schedule = $this->app->make(Schedule::class);
+            $schedule->command('backup:run')->daily();
+        });
     }
 
     public function register()
