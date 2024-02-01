@@ -25,21 +25,11 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->publishes([
             __DIR__ . '/../docker-compose-prod.yml' => base_path('docker-compose-prod.yml'),
+            __DIR__ . '/../docker-compose-prod.yml' => base_path('docker-compose-worker.yml'),
             __DIR__ . '/../docker-compose-prod.env' => base_path('docker-compose-prod.env'),
 
-            __DIR__ . '/../docker/start-container' => base_path('docker/start-container'),
-            __DIR__ . '/../docker/supervisord.conf' => base_path('docker/supervisord.conf'),
-
-            __DIR__ . '/../docker/8.2-prod/Dockerfile' => base_path('docker/8.2-prod/Dockerfile'),
-            __DIR__ . '/../docker/8.2-prod/php.ini' => base_path('docker/8.2-prod/php.ini'),
-
-            __DIR__ . '/../docker/8.1-prod/Dockerfile' => base_path('docker/8.1-prod/Dockerfile'),
-            __DIR__ . '/../docker/8.1-prod/php.ini' => base_path('docker/8.1-prod/php.ini'),
-
-            __DIR__ . '/../docker/7.4-prod/Dockerfile' => base_path('docker/7.4-prod/Dockerfile'),
-            __DIR__ . '/../docker/7.4-prod/php.ini' => base_path('docker/7.4-prod/php.ini'),
-
             __DIR__ . '/../config/seq.php' => config_path('seq.php'),
+            __DIR__ . '/../config/seq.php' => config_path('backup.php'),
         ], 'laravel-devops');
 
         Config::set('logging.channels.gelf.system_name', Cache::rememberForever('hostname_ip', function () {

@@ -47,16 +47,12 @@ The list of services you can access:
 Application environment variables can be managed at `docker-compose-prod.env` file.
 
 ### Queue and Scheduler
-**Scheduler** and **Horizon** supervisors are running on the background automatically. You can set your own daemons/tasks by modifying `docker/supervisord.conf`
+**Scheduler** and **Horizon** supervisors are running separately on their containers.
 
 ### PHP Versions, Extensions and INI files
 8.2 version is running by default but can be switched to `8.1` or `7.4` using the `APP_PHP_VERSION` environment variable.
-CLI PHP (used by scheduler and horizon) configs can also be modified at `docker/8.2-prod/php.ini`. 
-
-### CI/CD Script
-Deployment script can be modified at `docker/start-container` file.
 
 ### Thank yous
 - Big one for Cloudflare Team for making this possible for free.
 - Portainer project made it possible with their GitOps updates.
-- This project was inspired on Laravel Sail by Laravel Team.
+- ServerSideUp team made it possible with their PHP Docker images.

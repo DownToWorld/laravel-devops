@@ -1,57 +1,102 @@
 version: '3'
 
 services:
-    app:
-        ## For cache purposes
-        image: '${APP_DOCKER_STACK}-laravel-prod/app:php${APP_PHP_VERSION:-8.2}'
-
-        ## We don't want to pull actually
+    nginx:
+        image: "${APP_DOCKER_STACK}-loadbalancer/php:${APP_PHP_VERSION:-8.2}-fpm-nginx"
         pull_policy: build
+
+        environment:
+            AUTORUN_LARAVEL_STORAGE_LINK: false
+            AUTORUN_LARAVEL_MIGRATION: true
+            SSL_MODE: "off"
 
         build:
             context: .
-            dockerfile: './docker/${APP_PHP_VERSION:-8.2}-prod/Dockerfile'
-        environment:
-            XDEBUG_MODE: 'off'
-        env_file: 
-            - docker-compose-prod.env
+            dockerfile_inline: |
+                FROM serversideup/php:${APP_PHP_VERSION:-8.2}-fpm-nginx
+
+                RUN apt-get update \
+                && apt-get install -y --no-install-recommends php8.2-gmp \
+                && apt-get clean \
+                && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+
+                COPY . /var/www/html
+
+                RUN composer install --no-interaction --prefer-dist --no-scripts \
+                && composer dump-autoload --optimize \
+                && chown -R webuser:webgroup /var/www/html
+        
         volumes:
-            - 'app:/var/www/html'
+            - "mysql-conf:/var/www/html/docker/mariadb"
+        env_file:
+            - docker-compose-prod.env
+        depends_on:
+            mysql:
+                condition: service_healthy
+        networks:
+            - laravel
+            - cloudflared #80
+
+    horizon:
+        image: "${APP_DOCKER_STACK}-cli/app:php${APP_PHP_VERSION:-8.2}"
+        pull_policy: build
+
+        env_file:
+            - docker-compose-prod.env
+
+        build:
+            context: .
+            dockerfile_inline: |
+                FROM serversideup/php:${APP_PHP_VERSION:-8.2}-cli
+
+                RUN apt-get update \
+                && apt-get install -y --no-install-recommends php8.2-gmp \
+                && apt-get clean \
+                && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+
+                COPY . /var/www/html
+
+                RUN composer install --no-interaction --prefer-dist --no-scripts \
+                && composer dump-autoload --optimize \
+                && chown -R webuser:webgroup /var/www/html
+        
+        command: ["su", "webuser", "-c", "php artisan horizon"]
         depends_on:
             mysql:
                 condition: service_healthy
         networks:
             - laravel
 
-    nginx:
-        ## For cache purposes
-        image: '${APP_DOCKER_STACK}-shinsenter/phpfpm-nginx:php${APP_PHP_VERSION:-8.2}'
-
-        ## We don't want to pull actually
+    scheduler:
+        image: "${APP_DOCKER_STACK}-cli/app:php${APP_PHP_VERSION:-8.2}"
         pull_policy: build
+
+        env_file:
+            - docker-compose-prod.env
 
         build:
             context: .
             dockerfile_inline: |
-                FROM shinsenter/phpfpm-nginx:php${APP_PHP_VERSION:-8.2}
+                FROM serversideup/php:${APP_PHP_VERSION:-8.2}-cli
 
-                # you may want to install some PHP modules
-                # e.g: the following line will install imagick, pgsql, solr modules
-                # RUN phpaddmod imagick pgsql solr
+                RUN apt-get update \
+                && apt-get install -y --no-install-recommends php8.2-gmp \
+                && apt-get clean \
+                && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
-                # https://github.com/shinsenter/php#customize-docker-image
-        environment:
-            NGINX_DOCUMENT_ROOT: '/public'
-            TZ: UTC
-            PUID: 9999
-            PGID: 9999
-        env_file: 
-            - docker-compose-prod.env
-        volumes:
-            - 'app:/var/www/html:ro' # Cache, Logs and Filesystem are external
+                COPY . /var/www/html
+
+                RUN composer install --no-interaction --prefer-dist --no-scripts \
+                && composer dump-autoload --optimize \
+                && chown -R webuser:webgroup /var/www/html
+
+        command: ["su", "webuser", "-c", "php artisan schedule:work"]
+
+        depends_on:
+            mysql:
+                condition: service_healthy
         networks:
             - laravel
-            - cloudflared #80
 
     mysql:
         image: 'mariadb:10'
@@ -128,7 +173,7 @@ services:
             - cloudflared #6001 websocket-option && #9601 !!Use Cloudflare Zero Trust Access Applications for security!!
 
     meilisearch:
-        image: 'getmeili/meilisearch:latest'
+        image: 'getmeili/meilisearch:v1.6.1'
         environment:
             MEILI_MASTER_KEY: '${MEILISEARCH_MASTER_KEY:-masterKey}'
             MEILI_NO_ANALYTICS: '${MEILISEARCH_NO_ANALYTICS:-false}'
@@ -164,36 +209,36 @@ services:
             - laravel
             - cloudflared #80 !!Use Cloudflare Zero Trust Access Applications for security!!
 
-    # backup:
-    #     # Restore backup: https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html
-    #     image: offen/docker-volume-backup:v2
-    #     restart: always
-    #     environment:
-    #         NOTIFICATION_URLS: "${BACKUP_NOTIFICATION_URLS}" # Ex: telegram://token@telegram?chats=@channel-1 // ERROR BACKUP
-    #         BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-7}"
-    #         BACKUP_COMPRESSION: "gz"
-    #         BACKUP_FROM_SNAPSHOT: "true"
-    #         NOTIFICATION_LEVEL: "${BACKUP_NOTIFICATION_LEVEL:-error}" // error OR info
+    ## THIS IS FOR BACKING UP MINIO. DATABASE SHOULD BE BACKED UP BY SPATIE/BACKUP
+    backup:
+        # Restore backup: https://offen.github.io/docker-volume-backup/how-tos/restore-volumes-from-backup.html
+        image: offen/docker-volume-backup:v2
+        restart: always
+        environment:
+            NOTIFICATION_URLS: "${BACKUP_NOTIFICATION_URLS}" # Ex: telegram://token@telegram?chats=@channel-1 // ERROR BACKUP
+            BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-7}"
+            BACKUP_COMPRESSION: "gz"
+            BACKUP_FROM_SNAPSHOT: "true"
+            NOTIFICATION_LEVEL: "${BACKUP_NOTIFICATION_LEVEL:-error}" // error OR info
 
-    #         AWS_S3_PATH: "${BACKUP_AWS_S3_PATH}"
-    #         AWS_S3_BUCKET_NAME: "${BACKUP_AWS_S3_BUCKET_NAME}"
-    #         AWS_ACCESS_KEY_ID: "${BACKUP_AWS_ACCESS_KEY_ID}"
-    #         AWS_SECRET_ACCESS_KEY: "${BACKUP_AWS_SECRET_ACCESS_KEY}"
-    #         AWS_STORAGE_CLASS: "${BACKUP_AWS_STORAGE_CLASS}" // STANDARD OR GLACIER
+            AWS_S3_PATH: "${BACKUP_AWS_S3_PATH}"
+            AWS_S3_BUCKET_NAME: "${BACKUP_AWS_S3_BUCKET_NAME}"
+            AWS_ACCESS_KEY_ID: "${BACKUP_AWS_ACCESS_KEY_ID}"
+            AWS_SECRET_ACCESS_KEY: "${BACKUP_AWS_SECRET_ACCESS_KEY}"
+            AWS_STORAGE_CLASS: "${BACKUP_AWS_STORAGE_CLASS}" // STANDARD OR GLACIER
 
-    #         WEBDAV_URL: "${BACKUP_WEBDAV_URL}"
-    #         WEBDAV_PATH: "${BACKUP_WEBDAV_PATH}"
-    #         WEBDAV_USERNAME: "${BACKUP_WEBDAV_USERNAME}"
-    #         WEBDAV_PASSWORD: "${BACKUP_WEBDAV_PASSWORD}"
+            WEBDAV_URL: "${BACKUP_WEBDAV_URL}"
+            WEBDAV_PATH: "${BACKUP_WEBDAV_PATH}"
+            WEBDAV_USERNAME: "${BACKUP_WEBDAV_USERNAME}"
+            WEBDAV_PASSWORD: "${BACKUP_WEBDAV_PASSWORD}"
 
-    #         SSH_HOST_NAME: "${BACKUP_SSH_HOST_NAME}"
-    #         SSH_PORT: "${BACKUP_SSH_PORT}"
-    #         SSH_REMOTE_PATH: "${BACKUP_SSH_REMOTE_PATH}"
-    #         SSH_USER: "${BACKUP_SSH_USER}"
-    #         SSH_PASSWORD: "${BACKUP_SSH_PASSWORD}"
-    #     volumes:
-    #         - 'mysql:/backup/mysql:ro'
-    #         - 'minio:/backup/minio:ro'
+            SSH_HOST_NAME: "${BACKUP_SSH_HOST_NAME}"
+            SSH_PORT: "${BACKUP_SSH_PORT}"
+            SSH_REMOTE_PATH: "${BACKUP_SSH_REMOTE_PATH}"
+            SSH_USER: "${BACKUP_SSH_USER}"
+            SSH_PASSWORD: "${BACKUP_SSH_PASSWORD}"
+        volumes:
+            - 'minio:/backup/minio:ro'
 
 networks:
     laravel:
@@ -201,7 +246,6 @@ networks:
         external: true
 
 volumes:
-    app:
     mysql:
     redis:
     minio:
