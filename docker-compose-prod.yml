@@ -26,8 +26,6 @@ services:
                 && composer dump-autoload --optimize \
                 && chown -R webuser:webgroup /var/www/html
         
-        volumes:
-            - "mysql-conf:/var/www/html/docker/mariadb"
         env_file:
             - docker-compose-prod.env
         depends_on:
