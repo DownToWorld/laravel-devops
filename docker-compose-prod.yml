@@ -16,7 +16,7 @@ services:
                 FROM serversideup/php:${APP_PHP_VERSION:-8.2}-fpm-nginx
 
                 RUN apt-get update \
-                && apt-get install -y --no-install-recommends php8.2-gmp \
+                && apt-get install -y --no-install-recommends php${APP_PHP_VERSION:-8.2}-gmp \
                 && apt-get clean \
                 && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
@@ -50,7 +50,7 @@ services:
                 FROM serversideup/php:${APP_PHP_VERSION:-8.2}-cli
 
                 RUN apt-get update \
-                && apt-get install -y --no-install-recommends php8.2-gmp \
+                && apt-get install -y --no-install-recommends php${APP_PHP_VERSION:-8.2}-gmp \
                 && apt-get clean \
                 && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
@@ -80,7 +80,7 @@ services:
                 FROM serversideup/php:${APP_PHP_VERSION:-8.2}-cli
 
                 RUN apt-get update \
-                && apt-get install -y --no-install-recommends php8.2-gmp \
+                && apt-get install -y --no-install-recommends php${APP_PHP_VERSION:-8.2}-gmp \
                 && apt-get clean \
                 && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
 
