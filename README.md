@@ -1,6 +1,6 @@
 ### Installation
 ```
-composer require downtoworld/laravel-devops
+composer require "downtoworld/laravel-devops:*"
 ```
 
 Publish the **required** files:
