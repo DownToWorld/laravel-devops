@@ -39,7 +39,7 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->app->booted(function () {
             $schedule = $this->app->make(Schedule::class);
-            $schedule->command('backup:run')->daily();
+            $schedule->command('backup:run --only-db')->daily();
         });
     }
 
