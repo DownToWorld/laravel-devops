@@ -26,11 +26,11 @@ class ServiceProvider extends BaseServiceProvider
 
         $this->publishes([
             __DIR__ . '/../docker-compose-prod.yml' => base_path('docker-compose-prod.yml'),
-            __DIR__ . '/../docker-compose-prod.yml' => base_path('docker-compose-worker.yml'),
+            __DIR__ . '/../docker-compose-worker.yml' => base_path('docker-compose-worker.yml'),
             __DIR__ . '/../docker-compose-prod.env' => base_path('docker-compose-prod.env'),
 
             __DIR__ . '/../config/seq.php' => config_path('seq.php'),
-            __DIR__ . '/../config/seq.php' => config_path('backup.php'),
+            __DIR__ . '/../config/backup.php' => config_path('backup.php'),
         ], 'laravel-devops');
 
         Config::set('logging.channels.gelf.system_name', Cache::rememberForever('hostname_ip', function () {
