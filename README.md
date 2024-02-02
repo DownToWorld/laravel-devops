@@ -15,7 +15,7 @@ php artisan vendor:publish --tag=laravel-devops
     - At **Compose path** specify: `docker-compose-prod.yml`
     - Enable **GitOps updates**
     - Fill the required environment variables:
-        - `APP_NAME`: *serveral Laravel configurations use it for prefixing*
+        - `APP_NAME`: *several Laravel configurations use it for prefixing*
         - `APP_KEY`: *can be generated on your local environment*
         - `APP_DOMAIN`: domain of the app in production Example: *yourdomain.com*
         - `APP_DOCKER_STACK`: the name of the stack you are configuring @ Portainer. Example: *mystack*
