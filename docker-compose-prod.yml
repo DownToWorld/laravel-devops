@@ -2,7 +2,7 @@ version: '3'
 
 services:
     nginx:
-        image: "${APP_DOCKER_STACK}-loadbalancer/php:${APP_PHP_VERSION:-8.2}-fpm-nginx"
+        image: "${APP_DOCKER_STACK}-loadbalancer/php:beta-${APP_PHP_VERSION:-8.2}-unit"
         pull_policy: build
 
         environment:
@@ -13,18 +13,16 @@ services:
         build:
             context: .
             dockerfile_inline: |
-                FROM serversideup/php:${APP_PHP_VERSION:-8.2}-fpm-nginx
+                FROM serversideup/php:beta-${APP_PHP_VERSION:-8.2}-unit
 
-                RUN apt-get update \
-                && apt-get install -y --no-install-recommends php${APP_PHP_VERSION:-8.2}-gmp \
-                && apt-get clean \
-                && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+                RUN install-php-extensions gmp
+                RUN install-php-extensions intl
 
                 COPY . /var/www/html
 
                 RUN composer install --no-interaction --prefer-dist --no-scripts \
                 && composer dump-autoload --optimize \
-                && chown -R webuser:webgroup /var/www/html
+                && chown -R www-data:www-data /var/www/html
         
         env_file:
             - docker-compose-prod.env
@@ -36,7 +34,7 @@ services:
             - cloudflared #80
 
     horizon:
-        image: "${APP_DOCKER_STACK}-cli/app:php${APP_PHP_VERSION:-8.2}"
+        image: "${APP_DOCKER_STACK}-cli/app:beta-${APP_PHP_VERSION:-8.2}-cli"
         pull_policy: build
 
         env_file:
@@ -45,20 +43,20 @@ services:
         build:
             context: .
             dockerfile_inline: |
-                FROM serversideup/php:${APP_PHP_VERSION:-8.2}-cli
+                FROM serversideup/php:beta-${APP_PHP_VERSION:-8.2}-cli
 
-                RUN apt-get update \
-                && apt-get install -y --no-install-recommends php${APP_PHP_VERSION:-8.2}-gmp \
-                && apt-get clean \
-                && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+                RUN install-php-extensions gmp
+                RUN install-php-extensions intl
+
+                RUN docker-php-serversideup-dep-install-debian gosu
 
                 COPY . /var/www/html
 
                 RUN composer install --no-interaction --prefer-dist --no-scripts \
                 && composer dump-autoload --optimize \
-                && chown -R webuser:webgroup /var/www/html
+                && chown -R www-data:www-data /var/www/html
         
-        command: ["su", "webuser", "-c", "php artisan horizon"]
+        command: ["gosu", "www-data", "/usr/local/bin/php", "artisan", "horizon"]
         depends_on:
             mysql:
                 condition: service_healthy
@@ -66,7 +64,7 @@ services:
             - laravel
 
     scheduler:
-        image: "${APP_DOCKER_STACK}-cli/app:php${APP_PHP_VERSION:-8.2}"
+        image: "${APP_DOCKER_STACK}-cli/app:beta-${APP_PHP_VERSION:-8.2}-cli"
         pull_policy: build
 
         env_file:
@@ -75,20 +73,20 @@ services:
         build:
             context: .
             dockerfile_inline: |
-                FROM serversideup/php:${APP_PHP_VERSION:-8.2}-cli
+                FROM serversideup/php:beta-${APP_PHP_VERSION:-8.2}-cli
 
-                RUN apt-get update \
-                && apt-get install -y --no-install-recommends php${APP_PHP_VERSION:-8.2}-gmp \
-                && apt-get clean \
-                && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* /usr/share/doc/*
+                RUN install-php-extensions gmp
+                RUN install-php-extensions intl
 
+                RUN docker-php-serversideup-dep-install-debian gosu
+                
                 COPY . /var/www/html
 
                 RUN composer install --no-interaction --prefer-dist --no-scripts \
                 && composer dump-autoload --optimize \
-                && chown -R webuser:webgroup /var/www/html
+                && chown -R www-data:www-data /var/www/html
 
-        command: ["su", "webuser", "-c", "php artisan schedule:work"]
+        command: ["gosu", "www-data", "/usr/local/bin/php", "artisan", "schedule:work"]
 
         depends_on:
             mysql:
