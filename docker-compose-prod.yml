@@ -3,6 +3,7 @@ version: '3'
 services:
     nginx:
         image: "${APP_DOCKER_STACK}-loadbalancer/php:beta-${APP_PHP_VERSION:-8.2}-unit"
+        restart: always
         pull_policy: build
 
         environment:
@@ -15,14 +16,18 @@ services:
             dockerfile_inline: |
                 FROM serversideup/php:beta-${APP_PHP_VERSION:-8.2}-unit
 
+                USER root
+
                 RUN install-php-extensions gmp
                 RUN install-php-extensions intl
 
                 COPY . /var/www/html
 
-                RUN composer install --no-interaction --prefer-dist --no-scripts \
-                && composer dump-autoload --optimize \
-                && chown -R www-data:www-data /var/www/html
+                RUN chown -R www-data:www-data /var/www/html
+
+                USER www-data
+
+                RUN composer install --no-interaction --prefer-dist --no-scripts -o
         
         env_file:
             - docker-compose-prod.env
@@ -35,6 +40,7 @@ services:
 
     horizon:
         image: "${APP_DOCKER_STACK}-cli/app:beta-${APP_PHP_VERSION:-8.2}-cli"
+        restart: always
         pull_policy: build
 
         env_file:
@@ -45,16 +51,18 @@ services:
             dockerfile_inline: |
                 FROM serversideup/php:beta-${APP_PHP_VERSION:-8.2}-cli
 
+                USER root
+
                 RUN install-php-extensions gmp
                 RUN install-php-extensions intl
 
-                RUN docker-php-serversideup-dep-install-debian gosu
-
                 COPY . /var/www/html
 
-                RUN composer install --no-interaction --prefer-dist --no-scripts \
-                && composer dump-autoload --optimize \
-                && chown -R www-data:www-data /var/www/html
+                RUN chown -R www-data:www-data /var/www/html
+
+                USER www-data
+
+                RUN composer install --no-interaction --prefer-dist --no-scripts -o
         
         command: ["gosu", "www-data", "/usr/local/bin/php", "artisan", "horizon"]
         depends_on:
@@ -65,6 +73,7 @@ services:
 
     scheduler:
         image: "${APP_DOCKER_STACK}-cli/app:beta-${APP_PHP_VERSION:-8.2}-cli"
+        restart: always
         pull_policy: build
 
         env_file:
@@ -75,16 +84,18 @@ services:
             dockerfile_inline: |
                 FROM serversideup/php:beta-${APP_PHP_VERSION:-8.2}-cli
 
+                USER root
+
                 RUN install-php-extensions gmp
                 RUN install-php-extensions intl
 
-                RUN docker-php-serversideup-dep-install-debian gosu
-                
                 COPY . /var/www/html
 
-                RUN composer install --no-interaction --prefer-dist --no-scripts \
-                && composer dump-autoload --optimize \
-                && chown -R www-data:www-data /var/www/html
+                RUN chown -R www-data:www-data /var/www/html
+
+                USER www-data
+
+                RUN composer install --no-interaction --prefer-dist --no-scripts -o
 
         command: ["gosu", "www-data", "/usr/local/bin/php", "artisan", "schedule:work"]
 
@@ -96,6 +107,7 @@ services:
 
     mysql:
         image: 'mariadb:10'
+        restart: always
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD:-secret}'
             MYSQL_ROOT_HOST: "%"
@@ -115,6 +127,7 @@ services:
 
     redis:
         image: 'redis:alpine'
+        restart: always
         volumes:
             - 'redis:/data'
         networks:
@@ -126,7 +139,8 @@ services:
             timeout: 5s
 
     minio:
-        image: 'minio/minio:latest'
+        image: 'minio/minio:RELEASE.2020-10-28T08-16-50Z.hotfix.23bfe9811'
+        restart: always
         environment:
             MINIO_ROOT_USER: '${MINIO_ROOT_USER:-laravel}'
             MINIO_ROOT_PASSWORD: '${MINIO_ROOT_PASSWORD:-secret}'
@@ -143,6 +157,7 @@ services:
 
     selenium:
         image: 'selenium/standalone-chrome'
+        restart: always
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         volumes:
@@ -152,12 +167,14 @@ services:
 
     mailpit:
         image: 'axllent/mailpit:latest'
+        restart: always
         networks:
             - laravel
             - cloudflared #8025
 
     soketi:
         image: 'quay.io/soketi/soketi:latest-16-alpine'
+        restart: always
         environment:
             SOKETI_DEBUG: '${SOKETI_DEBUG:-0}'
             SOKETI_METRICS_ENABLED: 1
@@ -169,6 +186,7 @@ services:
             - cloudflared #6001 websocket-option && #9601 !!Use Cloudflare Zero Trust Access Applications for security!!
 
     meilisearch:
+        restart: always
         image: 'getmeili/meilisearch:v1.6.1'
         environment:
             MEILI_MASTER_KEY: '${MEILISEARCH_MASTER_KEY:-masterKey}'
@@ -185,20 +203,12 @@ services:
 
     # [...] https://github.com/laravel/sail/tree/1.x/stubs
 
-    seq-input-gelf:
-        image: datalust/seq-input-gelf:latest
-        depends_on:
-            - seq
-        environment:
-            SEQ_ADDRESS: "http://${APP_DOCKER_STACK:-mystack}-seq-1"
-        restart: unless-stopped
-        networks:
-            - laravel #12201
+    # MOVING FROM UDP TO HTTP ENDPOINT FOR SIMPLICITY AND REACHABILITY THROUGH CLOUDFLARE TUNNELS
     seq:
         image: datalust/seq:latest
         environment:
             ACCEPT_EULA: Y
-        restart: unless-stopped
+        restart: always
         volumes:
             - seq-data:/data
         networks:
@@ -215,13 +225,13 @@ services:
             BACKUP_RETENTION_DAYS: "${BACKUP_RETENTION_DAYS:-7}"
             BACKUP_COMPRESSION: "gz"
             BACKUP_FROM_SNAPSHOT: "true"
-            NOTIFICATION_LEVEL: "${BACKUP_NOTIFICATION_LEVEL:-error}" // error OR info
+            NOTIFICATION_LEVEL: "${BACKUP_NOTIFICATION_LEVEL:-error}"
 
             AWS_S3_PATH: "${BACKUP_AWS_S3_PATH}"
             AWS_S3_BUCKET_NAME: "${BACKUP_AWS_S3_BUCKET_NAME}"
             AWS_ACCESS_KEY_ID: "${BACKUP_AWS_ACCESS_KEY_ID}"
             AWS_SECRET_ACCESS_KEY: "${BACKUP_AWS_SECRET_ACCESS_KEY}"
-            AWS_STORAGE_CLASS: "${BACKUP_AWS_STORAGE_CLASS}" // STANDARD OR GLACIER
+            AWS_STORAGE_CLASS: "${BACKUP_AWS_STORAGE_CLASS}"
 
             WEBDAV_URL: "${BACKUP_WEBDAV_URL}"
             WEBDAV_PATH: "${BACKUP_WEBDAV_PATH}"
