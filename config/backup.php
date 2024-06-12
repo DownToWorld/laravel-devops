@@ -48,41 +48,8 @@ return [
 
         'notifiable' => \Spatie\Backup\Notifications\Notifiable::class,
 
-        'mail' => [
-            'to' => 'your@example.com',
-
-            'from' => [
-                'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-                'name' => env('MAIL_FROM_NAME', 'Example'),
-            ],
-        ],
-
-        'slack' => [
-            'webhook_url' => '',
-
-            /*
-         * If this is set to null the default channel of the webhook will be used.
-         */
-            'channel' => null,
-
-            'username' => null,
-
-            'icon' => null,
-
-        ],
-
         'discord' => [
             'webhook_url' => env('DISCORD_NOTIFICATIONS_WEBHOOK'),
-
-            /*
-         * If this is an empty string, the name field on the webhook will be used.
-         */
-            'username' => '',
-
-            /*
-         * If this is an empty string, the avatar on the webhook will be used.
-         */
-            'avatar_url' => '',
         ],
     ],
 
